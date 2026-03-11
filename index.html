@@ -1,0 +1,553 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gerador de Planilha Excel - Transporte e Estoque</title>
+    <!-- Bootstrap 5 CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <!-- jQuery -->
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <!-- SheetJS (xlsx) -->
+    <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+    <!-- CSS Personalizado -->
+    <link href="main.css" rel="stylesheet">
+</head>
+<body>
+    <div class="content">
+        <div class="container-fluid">
+            <div class="text-center mb-4">
+                <h1 class="header-title display-4 fw-bold">Sistema de Gestão de Transporte e Estoque</h1>
+                <p class="text-white lead">Controle completo de movimentações, estoque e validade de produtos</p>
+            </div>
+
+            <!-- Alerta de produto não encontrado -->
+            <div id="produtoNaoEncontradoAlert" class="alert alert-warning-custom">
+                <strong>⚠️ Atenção!</strong> Produto <span id="produtoAlerta"></span> (Lote: <span id="loteAlerta"></span>) do cliente <span id="clienteAlerta"></span> não encontrado no estoque. Verifique antes de registrar a saída!
+            </div>
+
+            <ul class="nav nav-tabs justify-content-center mb-4" id="myTab" role="tablist">
+                <li class="nav-item" role="presentation">
+                    <button class="nav-link active" id="movimentacao-tab" data-bs-toggle="tab" data-bs-target="#movimentacao" type="button" role="tab">Movimentação</button>
+                </li>
+                <li class="nav-item" role="presentation">
+                    <button class="nav-link" id="estoque-tab" data-bs-toggle="tab" data-bs-target="#estoque" type="button" role="tab">Estoque</button>
+                </li>
+                <li class="nav-item" role="presentation">
+                    <button class="nav-link" id="dashboard-tab" data-bs-toggle="tab" data-bs-target="#dashboard" type="button" role="tab">Dashboard</button>
+                </li>
+            </ul>
+
+            <div class="tab-content" id="myTabContent">
+                <!-- Movimentação Tab -->
+                <div class="tab-pane fade show active" id="movimentacao" role="tabpanel">
+                    <div class="row justify-content-center">
+                        <div class="col-12">
+                            <!-- Import Section -->
+                            <div class="import-section">
+                                <div class="row align-items-center">
+                                    <div class="col-md-6">
+                                        <h5>Importar Planilha de Movimentações</h5>
+                                        <p class="mb-0">Importe uma planilha no formato exportado pelo sistema</p>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <div class="file-input-wrapper">
+                                            <input type="file" id="importFile" accept=".xlsx,.xls">
+                                            <div class="file-input-label">
+                                                📁 Selecione o arquivo Excel para importar
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="import-success" id="importSuccess">
+                                    Planilha importada com sucesso! <span id="importCount"></span> movimentações adicionadas.
+                                </div>
+                                <div class="import-error" id="importError">
+                                    Erro ao importar a planilha. Verifique o formato do arquivo.
+                                </div>
+                            </div>
+
+                            <!-- Seção de Limpeza de Dados -->
+                            <div class="clear-section">
+                                <h6>⚡ Limpeza de Dados</h6>
+                                <div class="row">
+                                    <div class="col-md-6">
+                                        <button id="clearMovimentacoesBtn" class="btn btn-danger-clear w-100">
+                                            🗑️ Apagar Todas as Movimentações
+                                        </button>
+                                        <small class="text-muted">Remove todas as movimentações cadastradas</small>
+                                    </div><!-- Apagar todas as Movimentações -->
+                                    <div class="col-md-6">
+                                        <button id="clearEstoqueBtn" class="btn btn-danger-clear w-100">
+                                            🗑️ Apagar Todo o Estoque
+                                        </button>
+                                        <small class="text-muted">Remove todos os itens do estoque</small>
+                                    </div><!-- Apagar todos os Estoques -->
+                                    <div class="col-md-6 mt-3">
+                                        <button id="clearClientesBtn" class="btn btn-danger-clear w-100">
+                                            🗑️ Remover Cliente Desejado
+                                        </button>
+                                        <small class="text-muted">Remover cliente desejado </small>
+                                        </div><!-- Apagar todos os Clientes -->
+                                </div>
+                            </div>
+
+                            <div class="card">
+                                <div class="card-body p-4">
+                                    <form id="dataForm">
+                                        <div class="row g-3">
+                                            <!-- Primeira linha -->
+                                            <div class="col-12 col-md-6 col-lg-3">
+                                                <label for="dataMovimentacao" class="form-label">DATA MOVIMENTAÇÃO</label>
+                                                <input type="date" class="form-control" id="dataMovimentacao" required>
+                                            </div>
+                                            <div class="col-12 col-md-6 col-lg-3">
+                                                <label for="tipoMovimentacao" class="form-label">TIPO</label>
+                                                <select class="form-control" id="tipoMovimentacao" required>
+                                                    <option value="">Selecione...</option>
+                                                    <option value="entrada">Entrada</option>
+                                                    <option value="saida">Saída</option>
+                                                </select>
+                                            </div>
+                                            <div class="col-12 col-md-6 col-lg-3">
+                                                <label for="cte" class="form-label">CT-e</label>
+                                                <input type="text" class="form-control" id="cte" placeholder="Conhecimento">
+                                            </div>
+                                            <div class="col-12 col-md-6 col-lg-3">
+                                                <label for="nf" class="form-label">NF</label>
+                                                <input type="text" class="form-control" id="nf" placeholder="Nota Fiscal" required>
+                                            </div>
+                                            
+                                            <!-- Segunda linha -->
+                                            <div class="col-12 col-md-6 col-lg-3">
+                                                <label for="nfAgro" class="form-label">NF AGRO</label>
+                                                <input type="text" class="form-control" id="nfAgro" placeholder="Nota Fiscal Agro">
+                                            </div>
+                                            <div class="col-12 col-md-6 col-lg-3">
+                                                <label for="cliente" class="form-label">CLIENTE/FORNECEDOR</label>
+                                                <div class="autocomplete">
+                                                    <input type="text" class="form-control" id="cliente" placeholder="Nome" required>
+                                                    <div id="cliente-autocomplete-list" class="autocomplete-items"></div>
+                                                </div>
+                                            </div>
+                                            <div class="col-12 col-md-6 col-lg-3">
+                                                <label for="motorista" class="form-label">MOTORISTA</label>
+                                                <input type="text" class="form-control" id="motorista" placeholder="Motorista">
+                                            </div>
+                                            <div class="col-12 col-md-6 col-lg-3">
+                                                <label for="valorNf" class="form-label">VALOR NF (R$)</label>
+                                                <input type="text" class="form-control currency-input" id="valorNf" placeholder="0,00">
+                                            </div>
+                                            
+                                            <!-- Terceira linha -->
+                                            <div class="col-12 col-md-6">
+                                                <label for="destino" class="form-label">DESTINO/LOCAL</label>
+                                                <input type="text" class="form-control" id="destino" placeholder="Local" required>
+                                            </div>
+                                            
+                                            <!-- Produtos Section -->
+                                            <div class="col-12">
+                                                <label class="form-label">Produtos</label>
+                                                <div id="produtosContainer">
+                                                    <!-- Produtos serão adicionados aqui -->
+                                                </div>
+                                                <button type="button" id="addProdutoBtn" class="btn btn-success add-produto-btn">Adicionar Produto</button>
+                                                <button type="button" id="cancelEditBtn" class="btn btn-secondary cancel-edit-btn" style="display:none;">Cancelar Edição</button>
+                                            </div>
+                                            
+                                            <!-- Observações -->
+                                            <div class="col-12">
+                                                <label for="observacoes" class="form-label">OBSERVAÇÕES</label>
+                                                <textarea class="form-control" id="observacoes" rows="2" placeholder="Observações"></textarea>
+                                            </div>
+                                            
+                                            <div class="col-12 text-center">
+                                                <button type="submit" class="btn btn-primary mt-3" id="submitBtn">Adicionar à Lista</button>
+                                            </div>
+                                        </div>
+                                    </form>
+                                </div>
+                            </div>
+
+                            <!-- Filtro Section -->
+                            <div class="filter-section mt-4">
+                                <div class="row g-3">
+                                    <div class="col-12 col-md-4 col-lg-2">
+                                        <label class="form-label">NF</label>
+                                        <input type="text" class="form-control" id="filterNf" placeholder="Nota Fiscal">
+                                    </div>
+                                    <div class="col-12 col-md-4 col-lg-2">
+                                        <label class="form-label">NF AGRO</label>
+                                        <input type="text" class="form-control" id="filterNfAgro" placeholder="Nota Fiscal Agro">
+                                    </div>
+                                    <div class="col-12 col-md-4 col-lg-2">
+                                        <label class="form-label">Período</label>
+                                        <div class="date-range-filter">
+                                            <div>
+                                                <input type="date" class="form-control" id="filterDataInicio" placeholder="Data Início">
+                                            </div>
+                                            <div>
+                                                <input type="date" class="form-control" id="filterDataFim" placeholder="Data Fim">
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="col-12 col-md-4 col-lg-2">
+                                        <label class="form-label">Cliente</label>
+                                        <input type="text" class="form-control" id="filterCliente" placeholder="Cliente">
+                                    </div>
+                                    <div class="col-12 col-md-4 col-lg-2">
+                                        <label class="form-label">Produto</label>
+                                        <input type="text" class="form-control" id="filterProduto" placeholder="Produto">
+                                    </div>
+                                    <div class="col-12 col-md-4 col-lg-2">
+                                        <label class="form-label">Tipo</label>
+                                        <select class="form-control" id="filterTipo">
+                                            <option value="">Todos</option>
+                                            <option value="entrada">Entrada</option>
+                                            <option value="saida">Saída</option>
+                                        </select>
+                                    </div>
+                                    <div class="col-12 col-md-12 col-lg-2">
+                                        <div class="d-flex gap-2 mt-2">
+                                            <button id="applyFilter" class="btn btn-primary w-100">Filtrar</button>
+                                            <button id="clearFilter" class="btn clear-filters">Limpar</button>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="table-container">
+                                <div class="card mt-4">
+                                    <div class="card-body p-4">
+                                        <div class="d-flex justify-content-between align-items-center mb-3">
+                                            <h5 class="mb-0">Movimentações Cadastradas</h5>
+                                            <button id="exportBtn" class="btn btn-success">Exportar Excel</button>
+                                        </div>
+                                        <div class="table-responsive">
+                                            <table class="table table-striped">
+                                                <thead>
+                                                    <tr>
+                                                        <th>DATA</th>
+                                                        <th>TIPO</th>
+                                                        <th>NF</th>
+                                                        <th>NF AGRO</th>
+                                                        <th>CLIENTE</th>
+                                                        <th>PRODUTOS</th>
+                                                        <th>TOTAL QTDE</th>
+                                                        <th>OBSERVAÇÕES</th>
+                                                        <th>AÇÕES</th>
+                                                    </tr>
+                                                </thead>
+                                                <tbody id="dataTableBody">
+                                                    <!-- Dados serão adicionados aqui -->
+                                                </tbody>
+                                            </table>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Estoque Tab -->
+                <div class="tab-pane fade" id="estoque" role="tabpanel">
+                    <div class="row justify-content-center">
+                        <div class="col-12">
+                            <!-- Import Section for Estoque -->
+                            <div class="import-section">
+                                <div class="row align-items-center">
+                                    <div class="col-md-6">
+                                        <h5>Importar Planilha de Estoque</h5>
+                                        <p class="mb-0">Importe uma planilha de estoque no formato correto</p>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <div class="file-input-wrapper">
+                                            <input type="file" id="importEstoqueFile" accept=".xlsx,.xls">
+                                            <div class="file-input-label">
+                                                📁 Selecione o arquivo Excel para importar
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="import-success" id="importEstoqueSuccess">
+                                    Estoque importado com sucesso! <span id="importEstoqueCount"></span> itens adicionados.
+                                </div>
+                                <div class="import-error" id="importEstoqueError">
+                                    Erro ao importar o estoque. Verifique o formato do arquivo.
+                                </div>
+                            </div>
+
+                            <!-- Formulário de Adição/Edição de Estoque -->
+                            <div class="card mb-4">
+                                <div class="card-body p-4">
+                                    <h5 class="mb-4">Adicionar/Editar Produto no Estoque</h5>
+                                    <form id="estoqueForm">
+                                        <div class="row g-3">
+                                            <div class="col-12 col-md-4">
+                                                <label for="estoqueCliente" class="form-label">CLIENTE *</label>
+                                                <input type="text" class="form-control" id="estoqueCliente" placeholder="Nome do Cliente" required>
+                                            </div>
+                                            <div class="col-12 col-md-4">
+                                                <label for="estoqueProduto" class="form-label">PRODUTO *</label>
+                                                <input type="text" class="form-control" id="estoqueProduto" placeholder="Nome do Produto" required>
+                                            </div>
+                                            <div class="col-12 col-md-2">
+                                                <label for="estoqueLote" class="form-label">LOTE *</label>
+                                                <input type="text" class="form-control" id="estoqueLote" placeholder="Lote" required>
+                                            </div>
+                                            <div class="col-12 col-md-2">
+                                                <label for="estoqueQuantidade" class="form-label">QUANTIDADE *</label>
+                                                <input type="number" class="form-control" id="estoqueQuantidade" placeholder="0" min="1" required>
+                                            </div>
+                                            <div class="col-12 col-md-2">
+                                                <label for="estoqueFabricacao" class="form-label">FABRICAÇÃO *</label>
+                                                <input type="date" class="form-control" id="estoqueFabricacao" required>
+                                            </div>
+                                            <div class="col-12 col-md-2">
+                                                <label for="estoqueVencimento" class="form-label">VENCIMENTO *</label>
+                                                <input type="date" class="form-control" id="estoqueVencimento" required>
+                                            </div>
+                                            <div class="col-12 text-end">
+                                                <button type="submit" class="btn btn-info">Adicionar/Atualizar Produto</button>
+                                                <button type="button" id="cancelarEdicao" class="btn btn-secondary" style="display:none;">Cancelar</button>
+                                            </div>
+                                            <div id="estoqueProdutosContainer">
+                                                <!--- Produtos do estoque serão listados aqui para edição/exclusão -->
+                                            </div>
+                                            <button type="button" id="addEstoqueProdutoBtn">
+                                            Adicionar Produto
+                                            </button>
+                                        </div>
+                                    </form>
+                                </div>
+                            </div>
+
+                            <!-- Estoque Geral -->
+                            <h2 class="section-title">Estoque Geral (Todos os Clientes)</h2>
+                            <div class="card">
+                                <div class="card-body p-4">
+                                    <div class="d-flex justify-content-between align-items-center mb-3">
+                                        <h5 class="mb-0">Resumo do Estoque Geral</h5>
+                                        <button id="exportEstoqueGeralBtn" class="btn btn-warning">Exportar Estoque Geral</button>
+                                    </div>
+                                    <div class="table-responsive">
+                                        <table class="table table-striped">
+                                            <thead>
+                                                <tr>
+                                                    <th>PRODUTO</th>
+                                                    <th>LOTE TOTAL</th>
+                                                    <th>QUANTIDADE TOTAL</th>
+                                                    <th>STATUS MÉDIO</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody id="estoqueGeralTableBody">
+                                                <!-- Dados de estoque geral serão adicionados aqui -->
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                    <div class="alert alert-info mt-3 text-center" id="estoqueGeralInfo">
+                                        Nenhum produto em estoque geral cadastrado.
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Estoque por Cliente -->
+                            <h2 class="section-title">Estoque por Cliente</h2>
+                            
+                            <!-- Tabs de Clientes -->
+                            <ul class="nav nav-pills mb-4" id="clienteTabs" role="tablist">
+                                <!-- Clientes serão adicionados dinamicamente aqui -->
+                            </ul>
+                            
+                            <div class="tab-content" id="clienteTabContent">
+                                <!-- Conteúdo dos clientes será adicionado dinamicamente aqui -->
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Dashboard Tab -->
+                <div class="tab-pane fade" id="dashboard" role="tabpanel">
+                    <div class="row">
+                        <div class="col-12">
+                            <h2 class="section-title">Resumo das Movimentações</h2>
+                        </div>
+                    </div>
+                    
+                    <div class="row g-4">
+                        <!-- Total Entradas -->
+                        <div class="col-md-6 col-lg-3">
+                            <div class="stats-card">
+                                <div class="stats-icon entrada">
+                                    📥
+                                </div>
+                                <div class="stats-number" id="totalEntradas">0</div>
+                                <div class="stats-label">Total de Entradas</div>
+                            </div>
+                        </div>
+                        
+                        <!-- Total Saídas -->
+                        <div class="col-md-6 col-lg-3">
+                            <div class="stats-card">
+                                <div class="stats-icon saida">
+                                    📤
+                                </div>
+                                <div class="stats-number" id="totalSaidas">0</div>
+                                <div class="stats-label">Total de Saídas</div>
+                            </div>
+                        </div>
+                        
+                        <!-- Total Pallets Entrada -->
+                        <div class="col-md-6 col-lg-3">
+                            <div class="stats-card">
+                                <div class="stats-icon pallets">
+                                    📦
+                                </div>
+                                <div class="stats-number" id="totalPalletsEntrada">0</div>
+                                <div class="stats-label">Pallets Entrada</div>
+                            </div>
+                        </div>
+                        
+                        <!-- Total Pallets Saída -->
+                        <div class="col-md-6 col-lg-3">
+                            <div class="stats-card">
+                                <div class="stats-icon pallets">
+                                    📦
+                                </div>
+                                <div class="stats-number" id="totalPalletsSaida">0</div>
+                                <div class="stats-label">Pallets Saída</div>
+                            </div>
+                        </div>
+                        
+                        <!-- Total KG Entrada -->
+                        <div class="col-md-6 col-lg-3">
+                            <div class="stats-card">
+                                <div class="stats-icon weight">
+                                    ⚖️
+                                </div>
+                                <div class="stats-number" id="totalKgEntrada">0</div>
+                                <div class="stats-label">KG Entrada</div>
+                            </div>
+                        </div>
+                        
+                        <!-- Total KG Saída -->
+                        <div class="col-md-6 col-lg-3">
+                            <div class="stats-card">
+                                <div class="stats-icon weight">
+                                    ⚖️
+                                </div>
+                                <div class="stats-number" id="totalKgSaida">0</div>
+                                <div class="stats-label">KG Saída</div>
+                            </div>
+                        </div>
+                        
+                        <!-- Total Produtos Diferentes -->
+                        <div class="col-md-6 col-lg-3">
+                            <div class="stats-card">
+                                <div class="stats-icon">
+                                    🏷️
+                                </div>
+                                <div class="stats-number" id="totalProdutos">0</div>
+                                <div class="stats-label">Produtos Diferentes</div>
+                            </div>
+                        </div>
+                        
+                        <!-- Total Clientes -->
+                        <div class="col-md-6 col-lg-3">
+                            <div class="stats-card">
+                                <div class="stats-icon">
+                                    👥
+                                </div>
+                                <div class="stats-number" id="totalClientes">0</div>
+                                <div class="stats-label">Clientes Ativos</div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="row mt-5">
+                        <div class="col-12">
+                            <div class="card">
+                                <div class="card-body p-4">
+                                    <h5 class="mb-4">Resumo Detalhado</h5>
+                                    <div class="row">
+                                        <div class="col-md-6">
+                                            <h6 class="text-primary">Entradas</h6>
+                                            <ul class="list-unstyled">
+                                                <li><strong>Quantidade Total:</strong> <span id="qtdeTotalEntrada">0</span> unidades</li>
+                                                <li><strong>Valor Total:</strong> R$ <span id="valorTotalEntrada">0,00</span></li>
+                                                <li><strong>Média por Movimentação:</strong> <span id="mediaEntrada">0</span> itens</li>
+                                            </ul>
+                                        </div>
+                                        <div class="col-md-6">
+                                            <h6 class="text-danger">Saídas</h6>
+                                            <ul class="list-unstyled">
+                                                <li><strong>Quantidade Total:</strong> <span id="qtdeTotalSaida">0</span> unidades</li>
+                                                <li><strong>Valor Total:</strong> R$ <span id="valorTotalSaida">0,00</span></li>
+                                                <li><strong>Média por Movimentação:</strong> <span id="mediaSaida">0</span> itens</li>
+                                            </ul>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Footer -->
+    <footer>
+        <div class="container-fluid">
+            <div class="footer-content">
+                <div class="footer-logo">
+                    Sistema de Transporte & Estoque
+                </div>
+                <div class="footer-links">
+                    <a href="#" id="exportResumoBtn">Exportar Resumo</a>
+                    <a href="#" data-bs-toggle="modal" data-bs-target="#sobreModal">Sobre</a>
+                </div>
+            </div>
+            <div class="footer-copyright">
+                &copy; 2025 Sistema de Gestão de Transporte e Estoque. Todos os direitos reservados.
+            </div>
+        </div>
+    </footer>
+
+    <!-- Modal Sobre -->
+    <div class="modal fade" id="sobreModal" tabindex="-1" aria-labelledby="sobreModalLabel" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="sobreModalLabel">Sobre o Sistema</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <p><strong>Sistema de Gestão de Transporte e Estoque</strong></p>
+                    <p>Version: 2.0</p>
+                    <p>Este sistema permite o controle completo de movimentações de transporte, gestão de estoque com controle de validade, e geração de relatórios detalhados.</p>
+                    <p>Funcionalidades principais:</p>
+                    <ul>
+                        <li>Registro de movimentações (entrada e saída)</li>
+                        <li>Controle de estoque por cliente</li>
+                        <li>Gestão de lotes e validade</li>
+                        <li>Importação e exportação de planilhas Excel</li>
+                        <li>Dashboard com estatísticas detalhadas</li>
+                    </ul>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Fechar</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Bootstrap JS -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+    <!-- JavaScript Personalizado -->
+    <script src="main.js"></script>
+</body>
+</html>
