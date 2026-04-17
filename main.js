@@ -850,82 +850,87 @@ function criarTemplateProdutoEstoque(index) {
 
     // Adicionar/editar produto no estoque diretamente
     $('#estoqueForm').on('submit', function(e) {
-        e.preventDefault();
 
-        const produtos = $('.produto-item');
-        const listaProdutos = [];
+    e.preventDefault();
 
-        const dataFabricacao = $('#estoqueFabricacao').val();
-        const dataVencimento = $('#estoqueVencimento').val();
-        produtos.each(function() {
+    const cliente = $('#estoqueCliente').val();
 
-    const produto = $(this).find('.produto').val();
-    const lote = $(this).find('.lote').val();
-    const quantidade = $(this).find('.quantidade').val();
-    const fabricacao = $(this).find('.fabricacao').val();
-    const vencimento = $(this).find('.vencimento').val();
-        
-        if (new Date(dataVencimento) < new Date(dataFabricacao)) {
-            alert('A data de vencimento não pode ser anterior à data de fabricação!');
-            return;
+    if (!cliente) {
+        alert('Informe o cliente!');
+        return;
+    }
+
+    const listaProdutos = [];
+
+    $('#estoqueProdutosContainer .produto-item').each(function() {
+
+        const produto = $(this).find('.produto').val();
+        const lote = $(this).find('.lote').val();
+        const quantidade = parseInt($(this).find('.quantidade').val());
+        const fabricacao = $(this).find('.fabricacao').val();
+        const vencimento = $(this).find('.vencimento').val();
+
+        if (!produto || !lote || !quantidade || !fabricacao || !vencimento) {
+            alert('Preencha todos os campos dos produtos!');
+            listaProdutos.length = 0;
+            return false;
         }
 
-    listaProdutos.push({
-        produto,
-        lote,
-        quantidade,
-        fabricacao,
-        vencimento
+        if (new Date(vencimento) < new Date(fabricacao)) {
+            alert('A data de vencimento não pode ser anterior à fabricação!');
+            listaProdutos.length = 0;
+            return false;
+        }
+
+        listaProdutos.push({
+            produto,
+            lote,
+            quantidade,
+            fabricacao,
+            vencimento
+        });
+
     });
 
-});
-        
-        const cliente = $('#estoqueCliente').val();
-        const produto = $('#estoqueProduto').val();
-        const lote = $('#estoqueLote').val();
-        const quantidade = parseInt($('#estoqueQuantidade').val());
-        const fabricacao = dataFabricacao;
-        const vencimento = dataVencimento;
-        
-        if (editandoItemId === null) {
+    if (listaProdutos.length === 0) return;
 
-            listaProdutos.forEach(item => {
+    listaProdutos.forEach(item => {
 
-            const novoProduto = {
-                id: Date.now(),
+        const indexEstoque = estoque.findIndex(e =>
+            e.cliente === cliente &&
+            e.produto === item.produto &&
+            e.lote === item.lote
+        );
+
+        if (indexEstoque === -1) {
+
+            estoque.push({
+                id: Date.now() + Math.random(),
                 cliente: cliente,
-                produto: produto,
-                lote: lote,
-                dataFabricacao: fabricacao,
-                dataVencimento: vencimento,
-                quantidade: quantidade,
+                produto: item.produto,
+                lote: item.lote,
+                dataFabricacao: item.fabricacao,
+                dataVencimento: item.vencimento,
+                quantidade: item.quantidade,
                 ultimaMovimentacao: new Date().toISOString().split('T')[0]
-            };
-            estoque.push(novoProduto);
             });
 
         } else {
-            const index = estoque.findIndex(item => item.id === editandoItemId);
-            if (index !== -1) {
 
-                const item = listaProdutos[0];
+            estoque[indexEstoque].quantidade += item.quantidade;
+            estoque[indexEstoque].ultimaMovimentacao = new Date().toISOString().split('T')[0];
 
-                estoque[index].cliente = cliente;
-                estoque[index].produto = produto;
-                estoque[index].lote = lote;
-                estoque[index].dataFabricacao = fabricacao;
-                estoque[index].dataVencimento = vencimento;
-                estoque[index].quantidade = quantidade;
-                estoque[index].ultimaMovimentacao = new Date().toISOString().split('T')[0];
-            }
-            editandoItemId = null;
-            $('#cancelarEdicao').hide();
         }
-        
-        salvarDados();
-        atualizarTabelasEstoque();
-        $('#estoqueForm')[0].reset();
+
     });
+
+    salvarDados();
+    atualizarTabelasEstoque();
+
+    $('#estoqueForm')[0].reset();
+    $('#estoqueProdutosContainer').empty();
+
+});
 
     // Cancelar edição de estoque
     $('#cancelarEdicao').on('click', function() {
